@@ -27,12 +27,17 @@ class Game {
             color: '#0000FF'
         };
         
+        // Load princess sprite
+        this.princessSprite = new Image();
+        this.princessSprite.src = './prize.png';
+        this.princessSprite.onload = () => console.log('Princess sprite loaded');
+
         this.princess = {
             x: 700,
             y: 15,
-            width: 40,
-            height: 60,
-            color: '#FF0000'
+            width: 80,
+            height: 100,
+            color: '#FF0000'  // Keeping as fallback
         };
         
         this.platforms = [
@@ -274,9 +279,17 @@ class Game {
         }
         this.ctx.restore();
         
-        // Draw goal (red rectangle)
-        this.ctx.fillStyle = this.princess.color;
-        this.ctx.fillRect(this.princess.x, this.princess.y, this.princess.width, this.princess.height);
+        // Draw princess with sprite instead of rectangle
+        if (this.princessSprite && this.princessSprite.complete) {
+            this.ctx.drawImage(this.princessSprite, 
+                this.princess.x, this.princess.y, 
+                this.princess.width, this.princess.height);
+        } else {
+            // Fallback to red rectangle if image hasn't loaded
+            this.ctx.fillStyle = this.princess.color;
+            this.ctx.fillRect(this.princess.x, this.princess.y, 
+                this.princess.width, this.princess.height);
+        }
         
         // Draw victory animation
         if (this.victory.active) {
@@ -300,7 +313,7 @@ class Game {
             this.ctx.fillStyle = `hsl(${Date.now() % 360}, 100%, 50%)`; // Rainbow effect
             this.ctx.fillText('VICTORY!', this.canvas.width/2, this.canvas.height/2);
             this.ctx.font = '24px Arial';
-            this.ctx.fillText('You saved the princess!', this.canvas.width/2, this.canvas.height/2 + 50);
+            this.ctx.fillText('Congratulations!', this.canvas.width/2, this.canvas.height/2 + 50);
         }
     }
     
@@ -407,8 +420,8 @@ class Game {
         
         // Update princess position
         if (this.princess) {
-            this.princess.x = this.canvas.width * 0.95; // Position further right
-            this.princess.y = this.canvas.height - 785;
+            this.princess.x = this.canvas.width * 0.95 - this.princess.width;
+            this.princess.y = this.canvas.height - 785 - (this.princess.height - 60);
         }
     }
 }
