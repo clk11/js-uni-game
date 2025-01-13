@@ -57,11 +57,84 @@ class Game {
         window.addEventListener('keydown', (e) => this.keys[e.key] = true);
         window.addEventListener('keyup', (e) => this.keys[e.key] = false);
         
+        // Add running animation properties
+        this.runSprites = [];
+        this.idleSprites = [];
+        this.climbSprites = [];  // New array for climbing sprites
+        this.currentFrame = 0;
+        this.frameCount = 0;
+        this.animationSpeed = 8;
+        this.facingLeft = false;
+
+        // Load all running sprites
+        for (let i = 1; i <= 8; i++) {
+            const sprite = new Image();
+            sprite.src = `./assets/Run/Warrior_Run_${i}.png`;
+            sprite.onload = () => console.log(`Loaded running sprite ${i}`);
+            this.runSprites.push(sprite);
+        }
+
+        // Load all idle sprites
+        for (let i = 1; i <= 6; i++) {
+            const sprite = new Image();
+            sprite.src = `./assets/idle/Warrior_Idle_${i}.png`;
+            sprite.onload = () => console.log(`Loaded idle sprite ${i}`);
+            this.idleSprites.push(sprite);
+        }
+
+        // Load all climbing sprites
+        for (let i = 1; i <= 8; i++) {
+            const sprite = new Image();
+            sprite.src = `./assets/Ladder-Grab/Warrior-Ladder-Grab_${i}.png`;
+            sprite.onload = () => console.log(`Loaded climbing sprite ${i}`);
+            this.climbSprites.push(sprite);
+        }
+        
         // Start game loop last
         this.gameLoop();
     }
     
     update() {
+        if (this.hero.isClimbing) {
+            // Climbing animation
+            if (this.keys['ArrowUp'] || this.keys['ArrowDown']) {
+                this.frameCount++;
+                if (this.frameCount >= this.animationSpeed) {
+                    this.frameCount = 0;
+                    this.currentFrame = (this.currentFrame + 1) % this.climbSprites.length;
+                }
+            } else {
+                // Reset to first climbing frame when not moving on ladder
+                this.currentFrame = 0;
+                this.frameCount = 0;
+            }
+        } else {
+            // Reset climbing animation when not on ladder
+            if (this.keys['ArrowLeft'] || this.keys['ArrowRight']) {
+                // Running animation
+                this.frameCount++;
+                if (this.frameCount >= this.animationSpeed) {
+                    this.frameCount = 0;
+                    this.currentFrame = (this.currentFrame + 1) % this.runSprites.length;
+                }
+            } else {
+                // Idle animation
+                this.frameCount++;
+                if (this.frameCount >= this.animationSpeed) {
+                    this.frameCount = 0;
+                    this.currentFrame = (this.currentFrame + 1) % this.idleSprites.length;
+                }
+            }
+        }
+
+        // Update facing direction
+        if (this.keys['ArrowLeft']) {
+            this.facingLeft = true;
+        }
+        if (this.keys['ArrowRight']) {
+            this.facingLeft = false;
+        }
+
         // Horizontal movement
         if (this.keys['ArrowLeft']) {
             this.hero.x -= this.hero.speed;
@@ -78,47 +151,43 @@ class Game {
             if (this.checkLadderCollision(this.hero, ladder)) {
                 onLadder = true;
                 
-                const standingOnPlatform = this.platforms.some(platform => 
-                    Math.abs((this.hero.y + this.hero.height) - platform.y) <= 5 &&
-                    this.hero.x + this.hero.width > platform.x &&
-                    this.hero.x < platform.x + platform.width
-                );
-                
-                // Check if ladder extends below current position
-                const ladderExtendsDown = this.hero.y + this.hero.height < ladder.y + ladder.height;
-                
+                // Handle climbing up
                 if (this.keys['ArrowUp']) {
-                    // Stop when character's feet reach the top of the ladder
                     const characterFeet = this.hero.y + this.hero.height;
                     const wouldExceedTop = characterFeet - this.hero.speed <= ladder.y;
                     if (!wouldExceedTop) {
                         this.hero.y -= this.hero.speed;
                         this.hero.isClimbing = true;
+                    } else {
+                        this.hero.isClimbing = false;
+                        onLadder = false;
                     }
                 }
                 
+                // Simple drop-through when pressing down
                 if (this.keys['ArrowDown']) {
-                    if (standingOnPlatform) {
-                        // Only allow dropping down if the ladder extends below
-                        if (ladderExtendsDown) {
-                            this.hero.y += 10;
-                            canDropDown = true;
-                        }
-                    } else {
-                        // Stop at the bottom of the ladder
-                        const wouldExceedBottom = this.hero.y + this.hero.height + this.hero.speed > ladder.y + ladder.height;
-                        if (!wouldExceedBottom) {
-                            this.hero.y += this.hero.speed;
-                            this.hero.isClimbing = true;
-                        }
+                    // Check if we're on a platform
+                    const onPlatform = this.platforms.some(platform => 
+                        Math.abs((this.hero.y + this.hero.height) - platform.y) <= 5
+                    );
+                    
+                    if (onPlatform) {
+                        // Drop through the platform
+                        this.hero.y += 10;
+                        canDropDown = true;
+                        this.hero.isClimbing = false;  // No climbing animation when dropping
                     }
                 }
-                break;
             }
         }
         
-        // Only apply gravity if we're not on a ladder and not dropping down
-        if (!onLadder && !canDropDown) {
+        // After the ladder loop
+        if (!onLadder || !this.keys['ArrowUp']) {  // Only check ArrowUp since we don't climb down anymore
+            this.hero.isClimbing = false;
+        }
+
+        // Apply gravity if we're not climbing up or intentionally dropping
+        if (!this.hero.isClimbing && !canDropDown) {
             this.hero.y += 5; // Gravity
         }
         
@@ -176,9 +245,34 @@ class Game {
             }
         }
         
-        // Draw hero (blue rectangle)
-        this.ctx.fillStyle = this.hero.color;
-        this.ctx.fillRect(this.hero.x, this.hero.y, this.hero.width, this.hero.height);
+        // Draw hero with animation
+        let currentSprite;
+        if (this.hero.isClimbing) {
+            currentSprite = this.climbSprites[this.currentFrame];
+        } else if (this.keys['ArrowLeft'] || this.keys['ArrowRight']) {
+            currentSprite = this.runSprites[this.currentFrame];
+        } else {
+            currentSprite = this.idleSprites[this.currentFrame];
+        }
+        
+        this.ctx.save();
+        if (this.facingLeft) {
+            this.ctx.translate(this.hero.x + this.hero.width, this.hero.y - this.hero.height * 0.65);
+            this.ctx.scale(-1, 1);
+        } else {
+            this.ctx.translate(this.hero.x - this.hero.width * 0.375, this.hero.y - this.hero.height * 0.65);
+        }
+
+        if (currentSprite && currentSprite.complete) {
+            this.ctx.drawImage(currentSprite, 
+                0, 0, 
+                this.hero.width * 1.75, this.hero.height * 1.75);
+        } else {
+            // Fallback to blue rectangle
+            this.ctx.fillStyle = this.hero.color;
+            this.ctx.fillRect(0, 0, this.hero.width, this.hero.height);
+        }
+        this.ctx.restore();
         
         // Draw goal (red rectangle)
         this.ctx.fillStyle = this.princess.color;
@@ -235,7 +329,7 @@ class Game {
     
     checkPlatformCollision(player, platform) {
         const abovePlatform = player.y + player.height >= platform.y &&
-                             player.y + player.height <= platform.y + platform.height + 5;
+                             player.y + player.height <= platform.y + platform.height + 1;
         const onPlatformHorizontally = player.x + player.width > platform.x &&
                                       player.x < platform.x + platform.width;
         
