@@ -228,8 +228,9 @@ class Game {
     }
     
     draw() {
-        // Clear canvas
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        // Clear canvas with a slightly dark background
+        this.ctx.fillStyle = '#202020';  // Dark grey background
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         
         // Draw platforms (black lines)
         this.ctx.fillStyle = '#000000';
