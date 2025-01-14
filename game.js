@@ -414,23 +414,25 @@ class Game {
             currentSprite = this.idleSprites[this.currentFrame];
         }
         
-        this.ctx.save();
-        if (this.facingLeft) {
-            this.ctx.translate(this.hero.x + this.hero.width, this.hero.y - this.hero.height * 0.65);
-            this.ctx.scale(-1, 1);
-        } else {
-            this.ctx.translate(this.hero.x - this.hero.width * 0.375, this.hero.y - this.hero.height * 0.65);
-        }
+        if (!this.gameOver.active) {
+            this.ctx.save();
+            if (this.facingLeft) {
+                this.ctx.translate(this.hero.x + this.hero.width, this.hero.y - this.hero.height * 0.65);
+                this.ctx.scale(-1, 1);
+            } else {
+                this.ctx.translate(this.hero.x - this.hero.width * 0.375, this.hero.y - this.hero.height * 0.65);
+            }
 
-        if (currentSprite && currentSprite.complete) {
-            this.ctx.drawImage(currentSprite, 
-                0, 0, 
-                this.hero.width * 1.75, this.hero.height * 1.75);
-        } else {
-            this.ctx.fillStyle = '#202020';
-            this.ctx.fillRect(0, 0, this.hero.width, this.hero.height);
+            if (currentSprite && currentSprite.complete) {
+                this.ctx.drawImage(currentSprite, 
+                    0, 0, 
+                    this.hero.width * 1.75, this.hero.height * 1.75);
+            } else {
+                this.ctx.fillStyle = '#202020';
+                this.ctx.fillRect(0, 0, this.hero.width, this.hero.height);
+            }
+            this.ctx.restore();
         }
-        this.ctx.restore();
         
         if (this.victory.active) {
             this.ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
