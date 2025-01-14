@@ -95,6 +95,36 @@ class Game {
             this.climbSprites.push(sprite);
         }
         
+        // Initialize torches
+        this.torches = [];
+        this.platforms.forEach((platform, index) => {
+            const nearbyLadder = this.ladders.find(ladder => 
+                Math.abs(ladder.y - platform.y) < 20
+            );
+            
+            if (nearbyLadder) {
+                const torchY = platform.y + 35;  // Fixed 35px down from platform
+                
+                this.torches.push({
+                    x: nearbyLadder.x - 40,  // Left of ladder
+                    y: torchY,
+                    baseWidth: 10,
+                    baseHeight: 20,
+                    flameOffset: 0,
+                    flameTime: Math.random() * Math.PI * 2
+                });
+
+                this.torches.push({
+                    x: nearbyLadder.x + nearbyLadder.width + 40,  // Right of ladder
+                    y: torchY,
+                    baseWidth: 10,
+                    baseHeight: 20,
+                    flameOffset: 0,
+                    flameTime: Math.random() * Math.PI * 2
+                });
+            }
+        });
+        
         // Start game loop last
         this.gameLoop();
     }
@@ -316,6 +346,37 @@ class Game {
             this.ctx.font = '24px Arial';
             this.ctx.fillText('Congratulations!', this.canvas.width/2, this.canvas.height/2 + 50);
         }
+
+        // Draw torches
+        this.torches.forEach(torch => {
+            // Update flame animation
+            torch.flameTime += 0.1;
+            torch.flameOffset = Math.sin(torch.flameTime) * 3;
+
+            // Draw torch base (brown rectangle)
+            this.ctx.fillStyle = '#8B4513';
+            this.ctx.fillRect(torch.x - torch.baseWidth/2, torch.y, 
+                            torch.baseWidth, torch.baseHeight);
+
+            // Draw flame (animated triangle)
+            this.ctx.beginPath();
+            this.ctx.moveTo(torch.x - torch.baseWidth/2, torch.y);
+            this.ctx.lineTo(torch.x + torch.baseWidth/2, torch.y);
+            this.ctx.lineTo(torch.x + torch.flameOffset, torch.y - 20);
+            this.ctx.closePath();
+            
+            // Create gradient for flame
+            const gradient = this.ctx.createLinearGradient(
+                torch.x, torch.y,
+                torch.x + torch.flameOffset, torch.y - 20
+            );
+            gradient.addColorStop(0, '#FF4500');
+            gradient.addColorStop(0.6, '#FFA500');
+            gradient.addColorStop(1, '#FFD700');
+            
+            this.ctx.fillStyle = gradient;
+            this.ctx.fill();
+        });
     }
     
     gameLoop() {
@@ -424,6 +485,36 @@ class Game {
             this.princess.x = this.canvas.width * 0.95 - this.princess.width;
             this.princess.y = this.canvas.height - 785 - (this.princess.height - 60);
         }
+
+        // Update torch positions
+        this.torches = [];
+        this.platforms.forEach((platform, index) => {
+            const nearbyLadder = this.ladders.find(ladder => 
+                Math.abs(ladder.y - platform.y) < 20
+            );
+            
+            if (nearbyLadder) {
+                const torchY = platform.y + 35;  // Fixed 35px down from platform
+                
+                this.torches.push({
+                    x: nearbyLadder.x - 40,  // Left of ladder
+                    y: torchY,
+                    baseWidth: 10,
+                    baseHeight: 20,
+                    flameOffset: 0,
+                    flameTime: Math.random() * Math.PI * 2
+                });
+
+                this.torches.push({
+                    x: nearbyLadder.x + nearbyLadder.width + 40,  // Right of ladder
+                    y: torchY,
+                    baseWidth: 10,
+                    baseHeight: 20,
+                    flameOffset: 0,
+                    flameTime: Math.random() * Math.PI * 2
+                });
+            }
+        });
     }
 }
 
