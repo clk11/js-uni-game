@@ -3,12 +3,9 @@ class Game {
         this.canvas = document.getElementById('gameCanvas');
         this.ctx = this.canvas.getContext('2d');
         
-        // Set canvas size to window size
         this.resizeCanvas();
-        // Handle window resizing
         window.addEventListener('resize', () => this.resizeCanvas());
         
-        // Initialize victory object first
         this.victory = {
             active: false,
             particles: [],
@@ -16,10 +13,9 @@ class Game {
             confettiColors: ['#FF0000', '#00FF00', '#0000FF', '#FFFF00', '#FF00FF', '#00FFFF']
         };
         
-        // Game objects
         this.hero = {
             x: 50,
-            y: 640,
+            y: this.canvas.height - 160,
             width: 40,
             height: 60,
             speed: 5,
@@ -27,37 +23,34 @@ class Game {
         };
         
         this.platforms = [
-            { x: 0, y: this.canvas.height - 100, width: this.canvas.width, height: 5 },      // Ground level
-            { x: 0, y: this.canvas.height - 225, width: this.canvas.width, height: 5 },      // Level 1
-            { x: 0, y: this.canvas.height - 350, width: this.canvas.width, height: 5 },      // Level 2
-            { x: 0, y: this.canvas.height - 475, width: this.canvas.width, height: 5 },      // Level 3
-            { x: 0, y: this.canvas.height - 600, width: this.canvas.width, height: 5 },      // Level 4
-            { x: 0, y: this.canvas.height - 725, width: this.canvas.width, height: 5 },      // Top level
+            { x: 0, y: this.canvas.height - 100, width: this.canvas.width, height: 5 },
+            { x: 0, y: this.canvas.height - 225, width: this.canvas.width, height: 5 },
+            { x: 0, y: this.canvas.height - 350, width: this.canvas.width, height: 5 },
+            { x: 0, y: this.canvas.height - 475, width: this.canvas.width, height: 5 },
+            { x: 0, y: this.canvas.height - 600, width: this.canvas.width, height: 5 },
+            { x: 0, y: this.canvas.height - 725, width: this.canvas.width, height: 5 },
         ];
         
         this.ladders = [
-            { x: this.canvas.width * 0.2, y: this.canvas.height - 225, width: 40, height: 125 },   // Ground to Level 1
-            { x: this.canvas.width * 0.8, y: this.canvas.height - 350, width: 40, height: 125 },   // Level 1 to 2
-            { x: this.canvas.width * 0.3, y: this.canvas.height - 475, width: 40, height: 125 },   // Level 2 to 3
-            { x: this.canvas.width * 0.7, y: this.canvas.height - 600, width: 40, height: 125 },   // Level 3 to 4
-            { x: this.canvas.width * 0.4, y: this.canvas.height - 725, width: 40, height: 125 },   // Level 4 to Top
+            { x: this.canvas.width * 0.2, y: this.canvas.height - 225, width: 40, height: 125 },
+            { x: this.canvas.width * 0.8, y: this.canvas.height - 350, width: 40, height: 125 },
+            { x: this.canvas.width * 0.3, y: this.canvas.height - 475, width: 40, height: 125 },
+            { x: this.canvas.width * 0.7, y: this.canvas.height - 600, width: 40, height: 125 },
+            { x: this.canvas.width * 0.4, y: this.canvas.height - 725, width: 40, height: 125 },
         ];
         
-        // Input handling
         this.keys = {};
         window.addEventListener('keydown', (e) => this.keys[e.key] = true);
         window.addEventListener('keyup', (e) => this.keys[e.key] = false);
         
-        // Add running animation properties
         this.runSprites = [];
         this.idleSprites = [];
-        this.climbSprites = [];  // New array for climbing sprites
+        this.climbSprites = [];
         this.currentFrame = 0;
         this.frameCount = 0;
         this.animationSpeed = 8;
         this.facingLeft = false;
 
-        // Load all running sprites
         for (let i = 1; i <= 8; i++) {
             const sprite = new Image();
             sprite.src = `./assets/Run/Warrior_Run_${i}.png`;
@@ -65,7 +58,6 @@ class Game {
             this.runSprites.push(sprite);
         }
 
-        // Load all idle sprites
         for (let i = 1; i <= 6; i++) {
             const sprite = new Image();
             sprite.src = `./assets/idle/Warrior_Idle_${i}.png`;
@@ -73,7 +65,6 @@ class Game {
             this.idleSprites.push(sprite);
         }
 
-        // Load all climbing sprites
         for (let i = 1; i <= 8; i++) {
             const sprite = new Image();
             sprite.src = `./assets/Ladder-Grab/Warrior-Ladder-Grab_${i}.png`;
@@ -81,7 +72,6 @@ class Game {
             this.climbSprites.push(sprite);
         }
         
-        // Initialize torches
         this.torches = [];
         this.platforms.forEach((platform, index) => {
             const nearbyLadder = this.ladders.find(ladder => 
@@ -89,10 +79,10 @@ class Game {
             );
             
             if (nearbyLadder) {
-                const torchY = platform.y + 35;  // Fixed 35px down from platform
+                const torchY = platform.y + 35;
                 
                 this.torches.push({
-                    x: nearbyLadder.x - 40,  // Left of ladder
+                    x: nearbyLadder.x - 40,
                     y: torchY,
                     baseWidth: 10,
                     baseHeight: 20,
@@ -101,7 +91,7 @@ class Game {
                 });
 
                 this.torches.push({
-                    x: nearbyLadder.x + nearbyLadder.width + 40,  // Right of ladder
+                    x: nearbyLadder.x + nearbyLadder.width + 40,
                     y: torchY,
                     baseWidth: 10,
                     baseHeight: 20,
@@ -111,13 +101,11 @@ class Game {
             }
         });
         
-        // Add attack animation properties
         this.attackSprites = [];
         this.isAttacking = false;
         this.attackFrame = 0;
-        this.attackAnimationSpeed = 4;  // Faster speed for attack animation
+        this.attackAnimationSpeed = 4;
         
-        // Load all attack sprites
         for (let i = 1; i <= 12; i++) {
             const sprite = new Image();
             sprite.src = `./assets/Attack/Warrior_Attack_${i}.png`;
@@ -125,11 +113,10 @@ class Game {
             this.attackSprites.push(sprite);
         }
         
-        // Add enemy properties
         this.enemies = [];
         this.platforms.forEach((platform, index) => {
-            if (index > 0) {  // Skip ground level
-                const levelHealth = 1 + Math.floor(index * 0.5);  // Reduced health scaling (1-3 hits instead of 2-5)
+            if (index > 0) {
+                const levelHealth = 1 + Math.floor(index * 0.5);
                 this.enemies.push({
                     x: platform.width * (0.3 + Math.random() * 0.4),
                     y: platform.y - 60,
@@ -140,20 +127,18 @@ class Game {
                     platform: index,
                     isHit: false,
                     hitTime: 0,
-                    speed: 0.8 + (index * 0.3),  // Slightly faster base speed and scaling
+                    speed: 0.8 + (index * 0.3),
                     direction: 1,
                     id: Math.random()
                 });
             }
         });
         
-        // Start game loop last
         this.gameLoop();
     }
     
     update() {
         if (this.hero.isClimbing) {
-            // Climbing animation
             if (this.keys['ArrowUp'] || this.keys['ArrowDown']) {
                 this.frameCount++;
                 if (this.frameCount >= this.animationSpeed) {
@@ -161,21 +146,17 @@ class Game {
                     this.currentFrame = (this.currentFrame + 1) % this.climbSprites.length;
                 }
             } else {
-                // Reset to first climbing frame when not moving on ladder
                 this.currentFrame = 0;
                 this.frameCount = 0;
             }
         } else {
-            // Reset climbing animation when not on ladder
             if (this.keys['ArrowLeft'] || this.keys['ArrowRight']) {
-                // Running animation
                 this.frameCount++;
                 if (this.frameCount >= this.animationSpeed) {
                     this.frameCount = 0;
                     this.currentFrame = (this.currentFrame + 1) % this.runSprites.length;
                 }
             } else {
-                // Idle animation
                 this.frameCount++;
                 if (this.frameCount >= this.animationSpeed) {
                     this.frameCount = 0;
@@ -184,7 +165,6 @@ class Game {
             }
         }
 
-        // Update facing direction
         if (this.keys['ArrowLeft']) {
             this.facingLeft = true;
         }
@@ -192,7 +172,6 @@ class Game {
             this.facingLeft = false;
         }
 
-        // Horizontal movement
         if (this.keys['ArrowLeft']) {
             this.hero.x -= this.hero.speed;
         }
@@ -200,7 +179,6 @@ class Game {
             this.hero.x += this.hero.speed;
         }
         
-        // Ladder interaction
         let onLadder = false;
         let canDropDown = false;
         
@@ -208,7 +186,6 @@ class Game {
             if (this.checkLadderCollision(this.hero, ladder)) {
                 onLadder = true;
                 
-                // Handle climbing up
                 if (this.keys['ArrowUp']) {
                     const characterFeet = this.hero.y + this.hero.height;
                     const wouldExceedTop = characterFeet - this.hero.speed <= ladder.y;
@@ -221,34 +198,28 @@ class Game {
                     }
                 }
                 
-                // Simple drop-through when pressing down
                 if (this.keys['ArrowDown']) {
-                    // Check if we're on a platform
                     const onPlatform = this.platforms.some(platform => 
                         Math.abs((this.hero.y + this.hero.height) - platform.y) <= 5
                     );
                     
                     if (onPlatform) {
-                        // Drop through the platform
                         this.hero.y += 10;
                         canDropDown = true;
-                        this.hero.isClimbing = false;  // No climbing animation when dropping
+                        this.hero.isClimbing = false;
                     }
                 }
             }
         }
         
-        // After the ladder loop
-        if (!onLadder || !this.keys['ArrowUp']) {  // Only check ArrowUp since we don't climb down anymore
+        if (!onLadder || !this.keys['ArrowUp']) {
             this.hero.isClimbing = false;
         }
 
-        // Apply gravity if we're not climbing up or intentionally dropping
         if (!this.hero.isClimbing && !canDropDown) {
-            this.hero.y += 5; // Gravity
+            this.hero.y += 5;
         }
         
-        // Platform collision (skip if we're intentionally dropping down)
         if (!canDropDown) {
             for (let platform of this.platforms) {
                 if (this.checkPlatformCollision(this.hero, platform)) {
@@ -257,42 +228,35 @@ class Game {
             }
         }
         
-        // Keep player within canvas bounds
         this.hero.x = Math.max(0, Math.min(this.canvas.width - this.hero.width, this.hero.x));
         this.hero.y = Math.max(0, Math.min(this.canvas.height - this.hero.height, this.hero.y));
         
-        // Check win condition - all enemies defeated
         if (this.enemies.length === 0 && !this.victory.active) {
             this.victory.active = true;
             this.victory.startTime = Date.now();
-            // Create initial burst of particles
             for (let i = 0; i < 100; i++) {
                 this.createParticle();
             }
         }
 
-        // Handle attack animation
         if (this.keys[' '] && !this.isAttacking) {
             this.isAttacking = true;
             this.attackFrame = 0;
             this.frameCount = 0;
         }
 
-        // Update animation frames
         if (this.isAttacking) {
             this.frameCount++;
-            if (this.frameCount >= this.attackAnimationSpeed) {  // Use faster speed for attack
+            if (this.frameCount >= this.attackAnimationSpeed) {
                 this.frameCount = 0;
                 this.attackFrame++;
                 
-                // Reset attack state when animation completes
-                if (this.attackFrame >= 12) {  // Explicitly check for 12 frames
+                if (this.attackFrame >= 12) {
                     this.isAttacking = false;
                     this.attackFrame = 0;
                 }
             }
         } else {
-            // Normal animation updates for running/idle/climbing
             this.frameCount++;
             if (this.frameCount >= this.animationSpeed) {
                 this.frameCount = 0;
@@ -306,14 +270,11 @@ class Game {
             }
         }
 
-        // Check for enemy hits during attack
-        if (this.isAttacking && this.attackFrame === 6) {  // Middle of attack animation
+        if (this.isAttacking && this.attackFrame === 6) {
             this.enemies.forEach(enemy => {
-                // Check if hero is on the same platform level
                 const enemyPlatform = this.platforms[enemy.platform];
                 const heroOnSameLevel = Math.abs((this.hero.y + this.hero.height) - enemyPlatform.y) < 10;
                 
-                // Only allow hits if on same level
                 if (heroOnSameLevel) {
                     const distance = Math.abs((this.hero.x + this.hero.width/2) - (enemy.x + enemy.width/2));
                     const facingCorrectly = (this.facingLeft && this.hero.x > enemy.x) || 
@@ -339,14 +300,11 @@ class Game {
             });
         }
 
-        // Update enemy movement
         this.enemies.forEach(enemy => {
-            // Check if hero is on the same platform level
             const enemyPlatform = this.platforms[enemy.platform];
             const heroOnSameLevel = Math.abs((this.hero.y + this.hero.height) - enemyPlatform.y) < 10;
             
             if (heroOnSameLevel) {
-                // Move towards hero
                 const heroCenter = this.hero.x + (this.hero.width / 2);
                 const enemyCenter = enemy.x + (enemy.width / 2);
                 
@@ -358,7 +316,6 @@ class Game {
                     enemy.direction = 1;
                 }
                 
-                // Keep enemy on platform
                 enemy.x = Math.max(0, Math.min(this.canvas.width - enemy.width, enemy.x));
             }
         });
@@ -372,30 +329,24 @@ class Game {
     }
     
     draw() {
-        // Clear canvas with a slightly dark background
-        this.ctx.fillStyle = '#202020';  // Dark grey background
+        this.ctx.fillStyle = '#202020';
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         
-        // Draw platforms (black lines)
         this.ctx.fillStyle = '#000000';
         for (let platform of this.platforms) {
             this.ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
         }
         
-        // Draw ladders with rungs
         this.ctx.fillStyle = '#8B4513';
         for (let ladder of this.ladders) {
-            // Draw vertical sides
             this.ctx.fillRect(ladder.x, ladder.y, 5, ladder.height);
             this.ctx.fillRect(ladder.x + ladder.width - 5, ladder.y, 5, ladder.height);
             
-            // Draw rungs
             for (let i = 0; i < ladder.height; i += 20) {
                 this.ctx.fillRect(ladder.x, ladder.y + i, ladder.width, 5);
             }
         }
         
-        // Draw hero with animation
         let currentSprite;
         if (this.isAttacking) {
             currentSprite = this.attackSprites[this.attackFrame];
@@ -420,19 +371,15 @@ class Game {
                 0, 0, 
                 this.hero.width * 1.75, this.hero.height * 1.75);
         } else {
-            // Fallback to dark grey rectangle instead of blue
-            this.ctx.fillStyle = '#202020';  // Match the background color
+            this.ctx.fillStyle = '#202020';
             this.ctx.fillRect(0, 0, this.hero.width, this.hero.height);
         }
         this.ctx.restore();
         
-        // Draw victory animation
         if (this.victory.active) {
-            // Draw sparkly background
             this.ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
             this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
-            // Draw particles
             for (const particle of this.victory.particles) {
                 this.ctx.save();
                 this.ctx.translate(particle.x, particle.y);
@@ -442,34 +389,28 @@ class Game {
                 this.ctx.restore();
             }
 
-            // Draw celebratory text
             this.ctx.font = 'bold 48px Arial';
             this.ctx.textAlign = 'center';
-            this.ctx.fillStyle = `hsl(${Date.now() % 360}, 100%, 50%)`; // Rainbow effect
+            this.ctx.fillStyle = `hsl(${Date.now() % 360}, 100%, 50%)`;
             this.ctx.fillText('VICTORY!', this.canvas.width/2, this.canvas.height/2);
             this.ctx.font = '24px Arial';
             this.ctx.fillText('Congratulations!', this.canvas.width/2, this.canvas.height/2 + 50);
         }
 
-        // Draw torches
         this.torches.forEach(torch => {
-            // Update flame animation
             torch.flameTime += 0.1;
             torch.flameOffset = Math.sin(torch.flameTime) * 3;
 
-            // Draw torch base (brown rectangle)
             this.ctx.fillStyle = '#8B4513';
             this.ctx.fillRect(torch.x - torch.baseWidth/2, torch.y, 
                             torch.baseWidth, torch.baseHeight);
 
-            // Draw flame (animated triangle)
             this.ctx.beginPath();
             this.ctx.moveTo(torch.x - torch.baseWidth/2, torch.y);
             this.ctx.lineTo(torch.x + torch.baseWidth/2, torch.y);
             this.ctx.lineTo(torch.x + torch.flameOffset, torch.y - 20);
             this.ctx.closePath();
             
-            // Create gradient for flame
             const gradient = this.ctx.createLinearGradient(
                 torch.x, torch.y,
                 torch.x + torch.flameOffset, torch.y - 20
@@ -482,32 +423,25 @@ class Game {
             this.ctx.fill();
         });
 
-        // Draw enemies with demonic appearance
         this.enemies.forEach(enemy => {
-            // Base demon body
             if (enemy.isHit && Date.now() - enemy.hitTime < 200) {
-                this.ctx.fillStyle = '#FF0000';  // Bright red when hit
+                this.ctx.fillStyle = '#FF0000';
             } else {
-                this.ctx.fillStyle = '#330000';  // Dark blood red for normal state
+                this.ctx.fillStyle = '#330000';
             }
             
-            // Draw main body
             this.ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
             
-            // Draw horns
-            this.ctx.fillStyle = '#1a0000';  // Darker red for horns
+            this.ctx.fillStyle = '#1a0000';
             this.ctx.beginPath();
-            // Left horn
             this.ctx.moveTo(enemy.x + 5, enemy.y);
             this.ctx.lineTo(enemy.x + 15, enemy.y - 15);
             this.ctx.lineTo(enemy.x + 20, enemy.y);
-            // Right horn
             this.ctx.moveTo(enemy.x + enemy.width - 5, enemy.y);
             this.ctx.lineTo(enemy.x + enemy.width - 15, enemy.y - 15);
             this.ctx.lineTo(enemy.x + enemy.width - 20, enemy.y);
             this.ctx.fill();
 
-            // Draw glowing eyes
             const eyeGlow = this.ctx.createRadialGradient(
                 enemy.x + 12, enemy.y + 15, 0,
                 enemy.x + 12, enemy.y + 15, 5
@@ -516,20 +450,16 @@ class Game {
             eyeGlow.addColorStop(1, '#660000');
             
             this.ctx.fillStyle = eyeGlow;
-            // Left eye
             this.ctx.beginPath();
             this.ctx.arc(enemy.x + 12, enemy.y + 15, 4, 0, Math.PI * 2);
             this.ctx.fill();
-            // Right eye
             this.ctx.beginPath();
             this.ctx.arc(enemy.x + enemy.width - 12, enemy.y + 15, 4, 0, Math.PI * 2);
             this.ctx.fill();
 
-            // Draw health bar background
             this.ctx.fillStyle = '#333333';
             this.ctx.fillRect(enemy.x - 5, enemy.y - 15, enemy.width + 10, 8);
             
-            // Draw health bar with demonic glow
             const healthPercentage = enemy.health / enemy.maxHealth;
             const healthGradient = this.ctx.createLinearGradient(
                 enemy.x - 5, enemy.y - 15,
@@ -563,10 +493,8 @@ class Game {
         const onLadderHorizontally = playerCenter >= ladder.x && 
                                     playerCenter <= ladder.x + ladder.width;
         
-        // More precise vertical check
         const onLadderVertically = (player.y + player.height >= ladder.y && 
                                    player.y <= ladder.y + ladder.height) ||
-                                  // Only allow mounting from above when very close to the top
                                   (Math.abs((player.y + player.height) - ladder.y) <= 10);
         
         return onLadderHorizontally && onLadderVertically;
@@ -587,8 +515,8 @@ class Game {
         const size = 5 + Math.random() * 10;
         
         this.victory.particles.push({
-            x: this.canvas.width / 2,  // Center horizontally
-            y: this.canvas.height / 2, // Center vertically
+            x: this.canvas.width / 2,
+            y: this.canvas.height / 2,
             vx: Math.cos(angle) * speed,
             vy: Math.sin(angle) * speed,
             size: size,
@@ -601,20 +529,17 @@ class Game {
     updateVictoryAnimation() {
         if (!this.victory.active) return;
 
-        // Add new particles
         if (Date.now() - this.victory.startTime < 3000 && Math.random() < 0.3) {
             this.createParticle();
         }
 
-        // Update existing particles
         for (let i = this.victory.particles.length - 1; i >= 0; i--) {
             const particle = this.victory.particles[i];
             particle.x += particle.vx;
             particle.y += particle.vy;
-            particle.vy += 0.1; // Gravity
+            particle.vy += 0.1;
             particle.rotation += particle.rotationSpeed;
 
-            // Remove particles that are off screen
             if (particle.y > this.canvas.height) {
                 this.victory.particles.splice(i, 1);
             }
@@ -625,32 +550,28 @@ class Game {
         this.canvas.width = window.innerWidth;
         this.canvas.height = window.innerHeight;
         
-        // Update platforms (keeping the same platform setup)
         this.platforms = [
-            { x: 0, y: this.canvas.height - 100, width: this.canvas.width, height: 5 },  // Ground
-            { x: 0, y: this.canvas.height - 225, width: this.canvas.width, height: 5 },  // Level 1
-            { x: 0, y: this.canvas.height - 350, width: this.canvas.width, height: 5 },  // Level 2
-            { x: 0, y: this.canvas.height - 475, width: this.canvas.width, height: 5 },  // Level 3
-            { x: 0, y: this.canvas.height - 600, width: this.canvas.width, height: 5 },  // Level 4
-            { x: 0, y: this.canvas.height - 725, width: this.canvas.width, height: 5 },  // Top level
+            { x: 0, y: this.canvas.height - 100, width: this.canvas.width, height: 5 },
+            { x: 0, y: this.canvas.height - 225, width: this.canvas.width, height: 5 },
+            { x: 0, y: this.canvas.height - 350, width: this.canvas.width, height: 5 },
+            { x: 0, y: this.canvas.height - 475, width: this.canvas.width, height: 5 },
+            { x: 0, y: this.canvas.height - 600, width: this.canvas.width, height: 5 },
+            { x: 0, y: this.canvas.height - 725, width: this.canvas.width, height: 5 },
         ];
         
-        // Better spread ladder positions
         this.ladders = [
-            { x: this.canvas.width * 0.2, y: this.canvas.height - 225, width: 40, height: 125 },   // Ground to Level 1
-            { x: this.canvas.width * 0.8, y: this.canvas.height - 350, width: 40, height: 125 },   // Level 1 to 2
-            { x: this.canvas.width * 0.3, y: this.canvas.height - 475, width: 40, height: 125 },   // Level 2 to 3
-            { x: this.canvas.width * 0.7, y: this.canvas.height - 600, width: 40, height: 125 },   // Level 3 to 4
-            { x: this.canvas.width * 0.4, y: this.canvas.height - 725, width: 40, height: 125 },   // Level 4 to Top
+            { x: this.canvas.width * 0.2, y: this.canvas.height - 225, width: 40, height: 125 },
+            { x: this.canvas.width * 0.8, y: this.canvas.height - 350, width: 40, height: 125 },
+            { x: this.canvas.width * 0.3, y: this.canvas.height - 475, width: 40, height: 125 },
+            { x: this.canvas.width * 0.7, y: this.canvas.height - 600, width: 40, height: 125 },
+            { x: this.canvas.width * 0.4, y: this.canvas.height - 725, width: 40, height: 125 },
         ];
         
-        // Update hero position
         if (this.hero) {
             this.hero.y = this.canvas.height - 160;
-            this.hero.x = this.canvas.width * 0.05; // Start further left
+            this.hero.x = Math.min(50, this.canvas.width * 0.05);
         }
         
-        // Update torch positions
         this.torches = [];
         this.platforms.forEach((platform, index) => {
             const nearbyLadder = this.ladders.find(ladder => 
@@ -658,10 +579,10 @@ class Game {
             );
             
             if (nearbyLadder) {
-                const torchY = platform.y + 35;  // Fixed 35px down from platform
+                const torchY = platform.y + 35;
                 
                 this.torches.push({
-                    x: nearbyLadder.x - 40,  // Left of ladder
+                    x: nearbyLadder.x - 40,
                     y: torchY,
                     baseWidth: 10,
                     baseHeight: 20,
@@ -670,7 +591,7 @@ class Game {
                 });
 
                 this.torches.push({
-                    x: nearbyLadder.x + nearbyLadder.width + 40,  // Right of ladder
+                    x: nearbyLadder.x + nearbyLadder.width + 40,
                     y: torchY,
                     baseWidth: 10,
                     baseHeight: 20,
@@ -680,11 +601,10 @@ class Game {
             }
         });
 
-        // Update enemy positions
         this.enemies = [];
         this.platforms.forEach((platform, index) => {
-            if (index > 0) {  // Skip ground level
-                const levelHealth = 1 + Math.floor(index * 0.5);  // Reduced health scaling (1-3 hits instead of 2-5)
+            if (index > 0) {
+                const levelHealth = 1 + Math.floor(index * 0.5);
                 this.enemies.push({
                     x: platform.width * (0.3 + Math.random() * 0.4),
                     y: platform.y - 60,
@@ -695,7 +615,7 @@ class Game {
                     platform: index,
                     isHit: false,
                     hitTime: 0,
-                    speed: 0.8 + (index * 0.3),  // Slightly faster base speed and scaling
+                    speed: 0.8 + (index * 0.3),
                     direction: 1,
                     id: Math.random()
                 });
@@ -704,7 +624,6 @@ class Game {
     }
 }
 
-// Start the game when the page loads
 window.onload = () => {
     new Game();
 }; 
