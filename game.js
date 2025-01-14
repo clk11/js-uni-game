@@ -19,7 +19,19 @@ class Game {
             width: 40,
             height: 60,
             speed: 5,
-            isClimbing: false
+            isClimbing: false,
+            health: 100,
+            maxHealth: 100,
+            isHit: false,
+            hitTime: 0,
+            invulnerableTime: 1000,
+            knockback: {
+                active: false,
+                direction: 1,
+                speed: 15,
+                duration: 200,
+                startTime: 0
+            }
         };
         
         this.platforms = [
@@ -134,6 +146,13 @@ class Game {
             }
         });
         
+        this.gameOver = {
+            active: false,
+            startTime: 0,
+            bloodParticles: [],
+            restartCountdown: 3
+        };
+        
         this.gameLoop();
     }
     
@@ -220,6 +239,15 @@ class Game {
             this.hero.y += 5;
         }
         
+        if (this.hero.knockback.active) {
+            const knockbackTime = Date.now() - this.hero.knockback.startTime;
+            if (knockbackTime < this.hero.knockback.duration) {
+                this.hero.x += this.hero.knockback.speed * this.hero.knockback.direction;
+            } else {
+                this.hero.knockback.active = false;
+            }
+        }
+
         if (!canDropDown) {
             for (let platform of this.platforms) {
                 if (this.checkPlatformCollision(this.hero, platform)) {
@@ -317,6 +345,34 @@ class Game {
                 }
                 
                 enemy.x = Math.max(0, Math.min(this.canvas.width - enemy.width, enemy.x));
+            }
+        });
+
+        this.enemies.forEach(enemy => {
+            const enemyPlatform = this.platforms[enemy.platform];
+            const heroOnSameLevel = Math.abs((this.hero.y + this.hero.height) - enemyPlatform.y) < 10;
+            
+            if (heroOnSameLevel) {
+                const distance = Math.abs((this.hero.x + this.hero.width/2) - (enemy.x + enemy.width/2));
+                
+                if (distance < 50 && !this.hero.isHit) {
+                    this.hero.health -= 20;
+                    this.hero.isHit = true;
+                    this.hero.hitTime = Date.now();
+                    
+                    this.hero.knockback.active = true;
+                    this.hero.knockback.startTime = Date.now();
+                    this.hero.knockback.direction = this.hero.x < enemy.x ? -1 : 1;
+                    
+                    if (this.hero.health <= 0) {
+                        this.resetGame();
+                        return;
+                    }
+                    
+                    setTimeout(() => {
+                        this.hero.isHit = false;
+                    }, this.hero.invulnerableTime);
+                }
             }
         });
     }
@@ -477,12 +533,49 @@ class Game {
                 8
             );
         });
+
+        this.drawHealthBar();
+
+        if (this.hero.isHit && Date.now() - this.hero.hitTime < 200) {
+            this.ctx.globalAlpha = 0.5;
+        } else {
+            this.ctx.globalAlpha = 1.0;
+        }
+
+        if (this.gameOver.active) {
+            // Dark overlay
+            this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+            // Draw blood particles
+            this.gameOver.bloodParticles.forEach(particle => {
+                this.ctx.fillStyle = `rgba(180, 0, 0, ${particle.alpha})`;
+                this.ctx.beginPath();
+                this.ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+                this.ctx.fill();
+            });
+
+            // Game Over text
+            this.ctx.font = 'bold 72px Arial';
+            this.ctx.textAlign = 'center';
+            this.ctx.fillStyle = '#FF0000';
+            this.ctx.fillText('GAME OVER', this.canvas.width/2, this.canvas.height/2);
+
+            // Countdown text
+            this.ctx.font = 'bold 36px Arial';
+            this.ctx.fillStyle = '#FFFFFF';
+            this.ctx.fillText(`Restarting in ${this.gameOver.restartCountdown}...`, 
+                this.canvas.width/2, this.canvas.height/2 + 60);
+        }
     }
     
     gameLoop() {
         this.update();
         if (this.victory.active) {
             this.updateVictoryAnimation();
+        }
+        if (this.gameOver.active) {
+            this.updateGameOverScreen();
         }
         this.draw();
         requestAnimationFrame(() => this.gameLoop());
@@ -621,6 +714,106 @@ class Game {
                 });
             }
         });
+    }
+
+    drawHealthBar() {
+        const barWidth = 200;
+        const barHeight = 20;
+        const barX = 20;
+        const barY = 20;
+        
+        // Draw background
+        this.ctx.fillStyle = '#333333';
+        this.ctx.fillRect(barX, barY, barWidth, barHeight);
+        
+        // Draw health
+        const healthPercentage = this.hero.health / this.hero.maxHealth;
+        const healthGradient = this.ctx.createLinearGradient(barX, barY, barX + barWidth * healthPercentage, barY + barHeight);
+        healthGradient.addColorStop(0, '#00FF00');
+        healthGradient.addColorStop(1, '#008800');
+        
+        this.ctx.fillStyle = healthGradient;
+        this.ctx.fillRect(barX, barY, barWidth * healthPercentage, barHeight);
+        
+        // Draw border
+        this.ctx.strokeStyle = '#FFFFFF';
+        this.ctx.lineWidth = 2;
+        this.ctx.strokeRect(barX, barY, barWidth, barHeight);
+        
+        // Draw health text
+        this.ctx.fillStyle = '#FFFFFF';
+        this.ctx.font = '14px Arial';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText(`${Math.ceil(this.hero.health)}/${this.hero.maxHealth}`, barX + barWidth/2, barY + 15);
+    }
+
+    resetGame() {
+        this.gameOver.active = true;
+        this.gameOver.startTime = Date.now();
+        this.gameOver.restartCountdown = 3;
+        this.createBloodEffect();
+        
+        setTimeout(() => {
+            this.gameOver.active = false;
+            this.hero.health = this.hero.maxHealth;
+            this.hero.x = 50;
+            this.hero.y = this.canvas.height - 160;
+            this.hero.isHit = false;
+            this.hero.knockback.active = false;
+            this.initializeEnemies();
+        }, 3000);
+    }
+
+    initializeEnemies() {
+        this.enemies = [];
+        this.platforms.forEach((platform, index) => {
+            if (index > 0) {
+                const levelHealth = 1 + Math.floor(index * 0.5);
+                this.enemies.push({
+                    x: platform.width * (0.3 + Math.random() * 0.4),
+                    y: platform.y - 60,
+                    width: 40,
+                    height: 60,
+                    health: levelHealth,
+                    maxHealth: levelHealth,
+                    platform: index,
+                    isHit: false,
+                    hitTime: 0,
+                    speed: 0.8 + (index * 0.3),
+                    direction: 1,
+                    id: Math.random()
+                });
+            }
+        });
+    }
+
+    createBloodEffect() {
+        for (let i = 0; i < 100; i++) {
+            this.gameOver.bloodParticles.push({
+                x: this.hero.x + this.hero.width / 2,
+                y: this.hero.y + this.hero.height / 2,
+                vx: (Math.random() - 0.5) * 15,
+                vy: (Math.random() - 0.5) * 15,
+                size: 3 + Math.random() * 5,
+                alpha: 1
+            });
+        }
+    }
+
+    updateGameOverScreen() {
+        if (!this.gameOver.active) return;
+
+        // Update blood particles
+        this.gameOver.bloodParticles.forEach(particle => {
+            particle.x += particle.vx;
+            particle.y += particle.vy;
+            particle.vy += 0.2; // Gravity
+            particle.alpha = Math.max(0, particle.alpha - 0.01);
+        });
+
+        // Update countdown
+        const elapsedTime = Date.now() - this.gameOver.startTime;
+        this.gameOver.restartCountdown = Math.max(0, 3 - Math.floor(elapsedTime / 1000));
     }
 }
 
