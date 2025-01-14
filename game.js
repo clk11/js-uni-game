@@ -128,6 +128,7 @@ class Game {
         this.attackSprites = [];
         this.isAttacking = false;
         this.attackFrame = 0;
+        this.attackAnimationSpeed = 4;  // Faster speed for attack animation
         
         // Load all attack sprites
         for (let i = 1; i <= 12; i++) {
@@ -262,19 +263,36 @@ class Game {
         }
 
         // Handle attack animation
-        if (this.keys[' '] && !this.isAttacking) {  // Spacebar pressed
+        if (this.keys[' '] && !this.isAttacking) {
             this.isAttacking = true;
             this.attackFrame = 0;
+            this.frameCount = 0;
         }
 
+        // Update animation frames
         if (this.isAttacking) {
+            this.frameCount++;
+            if (this.frameCount >= this.attackAnimationSpeed) {  // Use faster speed for attack
+                this.frameCount = 0;
+                this.attackFrame++;
+                
+                // Reset attack state when animation completes
+                if (this.attackFrame >= 12) {  // Explicitly check for 12 frames
+                    this.isAttacking = false;
+                    this.attackFrame = 0;
+                }
+            }
+        } else {
+            // Normal animation updates for running/idle/climbing
             this.frameCount++;
             if (this.frameCount >= this.animationSpeed) {
                 this.frameCount = 0;
-                this.attackFrame++;
-                if (this.attackFrame >= this.attackSprites.length) {
-                    this.isAttacking = false;
-                    this.attackFrame = 0;
+                if (this.hero.isClimbing) {
+                    this.currentFrame = (this.currentFrame + 1) % this.climbSprites.length;
+                } else if (this.keys['ArrowLeft'] || this.keys['ArrowRight']) {
+                    this.currentFrame = (this.currentFrame + 1) % this.runSprites.length;
+                } else {
+                    this.currentFrame = (this.currentFrame + 1) % this.idleSprites.length;
                 }
             }
         }
