@@ -26,19 +26,6 @@ class Game {
             isClimbing: false
         };
         
-        // Load princess sprite
-        this.princessSprite = new Image();
-        this.princessSprite.src = './prize.png';
-        this.princessSprite.onload = () => console.log('Princess sprite loaded');
-
-        this.princess = {
-            x: 700,
-            y: 15,
-            width: 80,
-            height: 100,
-            color: '#FF0000'  // Keeping as fallback
-        };
-        
         this.platforms = [
             { x: 0, y: this.canvas.height - 100, width: this.canvas.width, height: 5 },      // Ground level
             { x: 0, y: this.canvas.height - 225, width: this.canvas.width, height: 5 },      // Level 1
@@ -137,6 +124,28 @@ class Game {
             sprite.onload = () => console.log(`Loaded attack sprite ${i}`);
             this.attackSprites.push(sprite);
         }
+        
+        // Add enemy properties
+        this.enemies = [];
+        this.platforms.forEach((platform, index) => {
+            if (index > 0) {  // Skip ground level
+                const levelHealth = 1 + Math.floor(index * 0.5);  // Reduced health scaling (1-3 hits instead of 2-5)
+                this.enemies.push({
+                    x: platform.width * (0.3 + Math.random() * 0.4),
+                    y: platform.y - 60,
+                    width: 40,
+                    height: 60,
+                    health: levelHealth,
+                    maxHealth: levelHealth,
+                    platform: index,
+                    isHit: false,
+                    hitTime: 0,
+                    speed: 0.8 + (index * 0.3),  // Slightly faster base speed and scaling
+                    direction: 1,
+                    id: Math.random()
+                });
+            }
+        });
         
         // Start game loop last
         this.gameLoop();
@@ -252,8 +261,8 @@ class Game {
         this.hero.x = Math.max(0, Math.min(this.canvas.width - this.hero.width, this.hero.x));
         this.hero.y = Math.max(0, Math.min(this.canvas.height - this.hero.height, this.hero.y));
         
-        // Check win condition
-        if (this.checkCollision(this.hero, this.princess) && !this.victory.active) {
+        // Check win condition - all enemies defeated
+        if (this.enemies.length === 0 && !this.victory.active) {
             this.victory.active = true;
             this.victory.startTime = Date.now();
             // Create initial burst of particles
@@ -296,6 +305,63 @@ class Game {
                 }
             }
         }
+
+        // Check for enemy hits during attack
+        if (this.isAttacking && this.attackFrame === 6) {  // Middle of attack animation
+            this.enemies.forEach(enemy => {
+                // Check if hero is on the same platform level
+                const enemyPlatform = this.platforms[enemy.platform];
+                const heroOnSameLevel = Math.abs((this.hero.y + this.hero.height) - enemyPlatform.y) < 10;
+                
+                // Only allow hits if on same level
+                if (heroOnSameLevel) {
+                    const distance = Math.abs((this.hero.x + this.hero.width/2) - (enemy.x + enemy.width/2));
+                    const facingCorrectly = (this.facingLeft && this.hero.x > enemy.x) || 
+                                          (!this.facingLeft && this.hero.x < enemy.x);
+                    
+                    if (distance < 100 && facingCorrectly && !enemy.isHit) {
+                        enemy.health--;
+                        enemy.isHit = true;
+                        enemy.hitTime = Date.now();
+                        
+                        if (enemy.health <= 0) {
+                            this.enemies = this.enemies.filter(e => e.id !== enemy.id);
+                        } else {
+                            setTimeout(() => {
+                                const existingEnemy = this.enemies.find(e => e.id === enemy.id);
+                                if (existingEnemy && existingEnemy.health > 0) {
+                                    existingEnemy.isHit = false;
+                                }
+                            }, 500);
+                        }
+                    }
+                }
+            });
+        }
+
+        // Update enemy movement
+        this.enemies.forEach(enemy => {
+            // Check if hero is on the same platform level
+            const enemyPlatform = this.platforms[enemy.platform];
+            const heroOnSameLevel = Math.abs((this.hero.y + this.hero.height) - enemyPlatform.y) < 10;
+            
+            if (heroOnSameLevel) {
+                // Move towards hero
+                const heroCenter = this.hero.x + (this.hero.width / 2);
+                const enemyCenter = enemy.x + (enemy.width / 2);
+                
+                if (heroCenter < enemyCenter) {
+                    enemy.x -= enemy.speed;
+                    enemy.direction = -1;
+                } else {
+                    enemy.x += enemy.speed;
+                    enemy.direction = 1;
+                }
+                
+                // Keep enemy on platform
+                enemy.x = Math.max(0, Math.min(this.canvas.width - enemy.width, enemy.x));
+            }
+        });
     }
     
     checkCollision(obj1, obj2) {
@@ -360,18 +426,6 @@ class Game {
         }
         this.ctx.restore();
         
-        // Draw princess with sprite instead of rectangle
-        if (this.princessSprite && this.princessSprite.complete) {
-            this.ctx.drawImage(this.princessSprite, 
-                this.princess.x, this.princess.y, 
-                this.princess.width, this.princess.height);
-        } else {
-            // Fallback to red rectangle if image hasn't loaded
-            this.ctx.fillStyle = this.princess.color;
-            this.ctx.fillRect(this.princess.x, this.princess.y, 
-                this.princess.width, this.princess.height);
-        }
-        
         // Draw victory animation
         if (this.victory.active) {
             // Draw sparkly background
@@ -427,6 +481,72 @@ class Game {
             this.ctx.fillStyle = gradient;
             this.ctx.fill();
         });
+
+        // Draw enemies with demonic appearance
+        this.enemies.forEach(enemy => {
+            // Base demon body
+            if (enemy.isHit && Date.now() - enemy.hitTime < 200) {
+                this.ctx.fillStyle = '#FF0000';  // Bright red when hit
+            } else {
+                this.ctx.fillStyle = '#330000';  // Dark blood red for normal state
+            }
+            
+            // Draw main body
+            this.ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
+            
+            // Draw horns
+            this.ctx.fillStyle = '#1a0000';  // Darker red for horns
+            this.ctx.beginPath();
+            // Left horn
+            this.ctx.moveTo(enemy.x + 5, enemy.y);
+            this.ctx.lineTo(enemy.x + 15, enemy.y - 15);
+            this.ctx.lineTo(enemy.x + 20, enemy.y);
+            // Right horn
+            this.ctx.moveTo(enemy.x + enemy.width - 5, enemy.y);
+            this.ctx.lineTo(enemy.x + enemy.width - 15, enemy.y - 15);
+            this.ctx.lineTo(enemy.x + enemy.width - 20, enemy.y);
+            this.ctx.fill();
+
+            // Draw glowing eyes
+            const eyeGlow = this.ctx.createRadialGradient(
+                enemy.x + 12, enemy.y + 15, 0,
+                enemy.x + 12, enemy.y + 15, 5
+            );
+            eyeGlow.addColorStop(0, '#FF0000');
+            eyeGlow.addColorStop(1, '#660000');
+            
+            this.ctx.fillStyle = eyeGlow;
+            // Left eye
+            this.ctx.beginPath();
+            this.ctx.arc(enemy.x + 12, enemy.y + 15, 4, 0, Math.PI * 2);
+            this.ctx.fill();
+            // Right eye
+            this.ctx.beginPath();
+            this.ctx.arc(enemy.x + enemy.width - 12, enemy.y + 15, 4, 0, Math.PI * 2);
+            this.ctx.fill();
+
+            // Draw health bar background
+            this.ctx.fillStyle = '#333333';
+            this.ctx.fillRect(enemy.x - 5, enemy.y - 15, enemy.width + 10, 8);
+            
+            // Draw health bar with demonic glow
+            const healthPercentage = enemy.health / enemy.maxHealth;
+            const healthGradient = this.ctx.createLinearGradient(
+                enemy.x - 5, enemy.y - 15,
+                enemy.x - 5 + (enemy.width + 10) * healthPercentage, enemy.y - 7
+            );
+            healthGradient.addColorStop(0, '#FF0000');
+            healthGradient.addColorStop(0.5, '#FF3300');
+            healthGradient.addColorStop(1, '#FF6600');
+            
+            this.ctx.fillStyle = healthGradient;
+            this.ctx.fillRect(
+                enemy.x - 5, 
+                enemy.y - 15, 
+                (enemy.width + 10) * healthPercentage, 
+                8
+            );
+        });
     }
     
     gameLoop() {
@@ -467,8 +587,8 @@ class Game {
         const size = 5 + Math.random() * 10;
         
         this.victory.particles.push({
-            x: this.princess.x + this.princess.width / 2,
-            y: this.princess.y + this.princess.height / 2,
+            x: this.canvas.width / 2,  // Center horizontally
+            y: this.canvas.height / 2, // Center vertically
             vx: Math.cos(angle) * speed,
             vy: Math.sin(angle) * speed,
             size: size,
@@ -530,12 +650,6 @@ class Game {
             this.hero.x = this.canvas.width * 0.05; // Start further left
         }
         
-        // Update princess position
-        if (this.princess) {
-            this.princess.x = this.canvas.width * 0.95 - this.princess.width;
-            this.princess.y = this.canvas.height - 785 - (this.princess.height - 60);
-        }
-
         // Update torch positions
         this.torches = [];
         this.platforms.forEach((platform, index) => {
@@ -562,6 +676,28 @@ class Game {
                     baseHeight: 20,
                     flameOffset: 0,
                     flameTime: Math.random() * Math.PI * 2
+                });
+            }
+        });
+
+        // Update enemy positions
+        this.enemies = [];
+        this.platforms.forEach((platform, index) => {
+            if (index > 0) {  // Skip ground level
+                const levelHealth = 1 + Math.floor(index * 0.5);  // Reduced health scaling (1-3 hits instead of 2-5)
+                this.enemies.push({
+                    x: platform.width * (0.3 + Math.random() * 0.4),
+                    y: platform.y - 60,
+                    width: 40,
+                    height: 60,
+                    health: levelHealth,
+                    maxHealth: levelHealth,
+                    platform: index,
+                    isHit: false,
+                    hitTime: 0,
+                    speed: 0.8 + (index * 0.3),  // Slightly faster base speed and scaling
+                    direction: 1,
+                    id: Math.random()
                 });
             }
         });
