@@ -23,8 +23,7 @@ class Game {
             width: 40,
             height: 60,
             speed: 5,
-            isClimbing: false,
-            color: '#0000FF'
+            isClimbing: false
         };
         
         // Load princess sprite
@@ -124,6 +123,19 @@ class Game {
                 });
             }
         });
+        
+        // Add attack animation properties
+        this.attackSprites = [];
+        this.isAttacking = false;
+        this.attackFrame = 0;
+        
+        // Load all attack sprites
+        for (let i = 1; i <= 12; i++) {
+            const sprite = new Image();
+            sprite.src = `./assets/Attack/Warrior_Attack_${i}.png`;
+            sprite.onload = () => console.log(`Loaded attack sprite ${i}`);
+            this.attackSprites.push(sprite);
+        }
         
         // Start game loop last
         this.gameLoop();
@@ -248,6 +260,24 @@ class Game {
                 this.createParticle();
             }
         }
+
+        // Handle attack animation
+        if (this.keys[' '] && !this.isAttacking) {  // Spacebar pressed
+            this.isAttacking = true;
+            this.attackFrame = 0;
+        }
+
+        if (this.isAttacking) {
+            this.frameCount++;
+            if (this.frameCount >= this.animationSpeed) {
+                this.frameCount = 0;
+                this.attackFrame++;
+                if (this.attackFrame >= this.attackSprites.length) {
+                    this.isAttacking = false;
+                    this.attackFrame = 0;
+                }
+            }
+        }
     }
     
     checkCollision(obj1, obj2) {
@@ -283,7 +313,9 @@ class Game {
         
         // Draw hero with animation
         let currentSprite;
-        if (this.hero.isClimbing) {
+        if (this.isAttacking) {
+            currentSprite = this.attackSprites[this.attackFrame];
+        } else if (this.hero.isClimbing) {
             currentSprite = this.climbSprites[this.currentFrame];
         } else if (this.keys['ArrowLeft'] || this.keys['ArrowRight']) {
             currentSprite = this.runSprites[this.currentFrame];
@@ -304,8 +336,8 @@ class Game {
                 0, 0, 
                 this.hero.width * 1.75, this.hero.height * 1.75);
         } else {
-            // Fallback to blue rectangle
-            this.ctx.fillStyle = this.hero.color;
+            // Fallback to dark grey rectangle instead of blue
+            this.ctx.fillStyle = '#202020';  // Match the background color
             this.ctx.fillRect(0, 0, this.hero.width, this.hero.height);
         }
         this.ctx.restore();
